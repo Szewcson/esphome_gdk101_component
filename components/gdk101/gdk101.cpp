@@ -34,17 +34,23 @@ void GDK101Component::update() {
 
 void GDK101Component::setup() {
   uint8_t data[2];
+  uint8_t reset_counter = 5;
   ESP_LOGCONFIG(TAG, "Setting up GDK101...");
+  delay(10);
   // first, reset the sensor
-  if (!this->reset_sensor_(data)) {
-    this->mark_failed();
-    return;
+  while ((data[0] != 1) && (reset_counter != 0)) {
+    if (!this->reset_sensor_(data)) {
+      this->mark_failed();
+      return;
+    }
+    delay(10);
+    reset_counter --;
   }
   // sensor should acknowledge the reset procedure
   if (data[0] != 1) {
-    this->status_set_error();
+    this->mark_failed();
+    return;
   }
-  delay(10);
   // read firmware version
   if (!this->read_fw_version_(data)) {
     this->status_set_warning();
@@ -57,9 +63,6 @@ void GDK101Component::dump_config() {
   if (this->is_failed()) {
     ESP_LOGE(TAG, "Communication with GDK101 failed!");
   } else {
-    if (this->status_has_error()) {
-      ESP_LOGE(TAG, "Reset procedure not returned 1");
-    }
     if (this->status_has_warning()) {
       ESP_LOGW(TAG, "Can't read Firmware Version");
     }
